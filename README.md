@@ -1,5 +1,7 @@
 # mattpocock-ai-coding-crash-course
-Matt Pocock's AI Coding Crash Course
+
+### Matt Pocock's AI Coding Crash Course
+
 <img width="960" height="540" alt="image" src="https://github.com/user-attachments/assets/311b31d9-1f60-4601-8ffc-8dd7338ad927" />
 
 
