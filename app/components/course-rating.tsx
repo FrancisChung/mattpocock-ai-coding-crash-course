@@ -32,12 +32,36 @@ export function CourseRating({ courseId, interactive = true, className = "" }: {
     <div className={`flex items-center gap-2 ${className}`} aria-label={`${average} out of 5 stars from ${count} ratings`}>
       <div className="flex items-center" role={isInteractive ? "radiogroup" : undefined}>
         {[1, 2, 3, 4, 5].map((star) => {
-          const starClass = star <= displayRating ? "fill-amber-400 text-amber-400" : "text-muted-foreground/40";
+          const fillPercent = Math.max(0, Math.min(1, displayRating - star + 1)) * 100;
           return isInteractive ? (
-            <button key={star} type="button" disabled={fetcher.state !== "idle"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectRating(star); }} className="rounded-sm p-0.5 transition-transform hover:scale-110 disabled:opacity-60" aria-label={`Rate ${star} out of 5 stars`}>
-              <Star className={`size-4 ${starClass}`} />
-            </button>
-          ) : <Star key={star} className={`size-4 ${starClass}`} />;
+            <span key={star} className="relative inline-flex size-5 transition-transform hover:scale-110">
+              <Star className="absolute inset-0 size-5 text-muted-foreground/40" />
+              <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+                <Star className="size-5 fill-amber-400 text-amber-400" />
+              </span>
+              <button
+                type="button"
+                disabled={fetcher.state !== "idle"}
+                onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectRating(star - 0.5); }}
+                className="absolute inset-y-0 left-0 w-1/2 cursor-pointer disabled:cursor-wait"
+                aria-label={`Rate ${star - 0.5} out of 5 stars`}
+              />
+              <button
+                type="button"
+                disabled={fetcher.state !== "idle"}
+                onClick={(event) => { event.preventDefault(); event.stopPropagation(); selectRating(star); }}
+                className="absolute inset-y-0 right-0 w-1/2 cursor-pointer disabled:cursor-wait"
+                aria-label={`Rate ${star} out of 5 stars`}
+              />
+            </span>
+          ) : (
+            <span key={star} className="relative inline-flex size-5">
+              <Star className="absolute inset-0 size-5 text-muted-foreground/40" />
+              <span className="absolute inset-0 overflow-hidden" style={{ width: `${fillPercent}%` }}>
+                <Star className="size-5 fill-amber-400 text-amber-400" />
+              </span>
+            </span>
+          );
         })}
       </div>
       <span className="text-xs text-muted-foreground">{count ? `${average.toFixed(1)} (${count})` : "No ratings"}</span>

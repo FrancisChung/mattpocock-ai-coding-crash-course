@@ -80,7 +80,7 @@ export const courseReviews = sqliteTable(
     id: integer("id").primaryKey({ autoIncrement: true }),
     courseId: integer("course_id").notNull().references(() => courses.id),
     userId: integer("user_id").notNull().references(() => users.id),
-    rating: integer("rating").notNull(),
+    rating: real("rating").notNull(),
     createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
     updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
   },
