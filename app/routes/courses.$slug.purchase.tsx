@@ -26,6 +26,7 @@ import {
 } from "~/components/ui/tabs";
 import { BookOpen, Clock, Users, ArrowLeft, Minus, Plus } from "lucide-react";
 import { CourseImage } from "~/components/course-image";
+import { CourseRating } from "~/components/course-rating";
 import { UserAvatar } from "~/components/user-avatar";
 import { data } from "react-router";
 import { formatDuration, formatPrice } from "~/lib/utils";
@@ -218,6 +219,7 @@ export default function PurchaseConfirmation({
             {/* Course info */}
             <div className="flex-1">
               <h2 className="mb-1 text-xl font-semibold">{course.title}</h2>
+              <CourseRating courseId={course.id} className="mb-2" />
               <p className="mb-4 text-sm text-muted-foreground">
                 {course.description}
               </p>

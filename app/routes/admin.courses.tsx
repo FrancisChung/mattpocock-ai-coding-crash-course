@@ -25,6 +25,7 @@ import {
 } from "~/components/ui/select";
 import { AlertTriangle, BookOpen, Users } from "lucide-react";
 import { data, isRouteErrorResponse, Link } from "react-router";
+import { CourseRating } from "~/components/course-rating";
 
 const adminCourseActionSchema = z.discriminatedUnion("intent", [
   z.object({
@@ -169,6 +170,7 @@ function CourseRow({
             {course.title}
           </Link>
           <p className="text-xs text-muted-foreground">{course.slug}</p>
+          <CourseRating courseId={course.id} interactive={false} className="mt-1" />
         </div>
       </td>
       <td className="px-4 py-3">

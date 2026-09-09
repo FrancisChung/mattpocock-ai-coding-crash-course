@@ -41,6 +41,7 @@ import { getUserById } from "~/services/userService";
 import { CourseStatus, UserRole } from "~/db/schema";
 import { formatDuration, formatPrice } from "~/lib/utils";
 import { MonacoMarkdownEditor } from "~/components/monaco-markdown-editor";
+import { CourseRating } from "~/components/course-rating";
 import { Card, CardContent, CardHeader } from "~/components/ui/card";
 import { Button } from "~/components/ui/button";
 import { Input } from "~/components/ui/input";
@@ -1150,6 +1151,7 @@ export default function InstructorCourseEditor({
       {/* Course Header with inline editing */}
       <div className="mb-8">
         <InlineEditableTitle value={course.title} courseId={course.id} />
+        <CourseRating courseId={course.id} interactive={false} className="mt-3" />
         <div className="mt-2">
           <InlineEditableDescription
             value={course.description}
