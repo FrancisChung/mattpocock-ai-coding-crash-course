@@ -186,7 +186,7 @@ export async function loader({ params, request }: Route.LoaderArgs) {
 
   const quizCount = lessonQuizzes.length;
 
-  return { course, lessonCount, enrollmentCount, students, quizCount };
+  return { course, lessonCount, enrollmentCount, students, quizCount, currentUserId };
 }
 
 export async function action({ params, request }: Route.ActionArgs) {
@@ -1151,7 +1151,7 @@ export default function InstructorCourseEditor({
       {/* Course Header with inline editing */}
       <div className="mb-8">
         <InlineEditableTitle value={course.title} courseId={course.id} />
-        <CourseRating courseId={course.id} interactive={false} className="mt-3" />
+        <CourseRating courseId={course.id} userId={loaderData.currentUserId} interactive={false} className="mt-3" />
         <div className="mt-2">
           <InlineEditableDescription
             value={course.description}

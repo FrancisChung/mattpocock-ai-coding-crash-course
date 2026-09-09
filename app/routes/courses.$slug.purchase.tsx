@@ -115,6 +115,7 @@ export async function loader({ params, request, url }: Route.LoaderArgs) {
     country,
     countryName,
     isEnrolled: enrolled,
+    currentUserId,
   };
 }
 
@@ -171,6 +172,7 @@ export default function PurchaseConfirmation({
     tierInfo,
     countryName,
     isEnrolled,
+    currentUserId,
   } = loaderData;
   const fetcher = useFetcher();
   const isSubmitting = fetcher.state !== "idle";
@@ -219,7 +221,7 @@ export default function PurchaseConfirmation({
             {/* Course info */}
             <div className="flex-1">
               <h2 className="mb-1 text-xl font-semibold">{course.title}</h2>
-              <CourseRating courseId={course.id} className="mb-2" />
+              <CourseRating courseId={course.id} userId={currentUserId} className="mb-2" />
               <p className="mb-4 text-sm text-muted-foreground">
                 {course.description}
               </p>

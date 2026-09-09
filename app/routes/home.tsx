@@ -187,7 +187,7 @@ export default function Home({ loaderData }: Route.ComponentProps) {
                     <p className="line-clamp-2 text-sm text-muted-foreground">
                       {course.description}
                     </p>
-                    <CourseRating courseId={course.id} className="mt-3" />
+                    <CourseRating courseId={course.id} userId={currentUser?.id} className="mt-3" />
                   </CardContent>
                   <CardFooter className="flex items-center justify-between text-xs text-muted-foreground">
                     <span className="flex items-center gap-1">

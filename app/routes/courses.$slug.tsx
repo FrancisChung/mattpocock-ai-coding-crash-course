@@ -290,7 +290,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
         </div>
         <div className="mb-3 flex items-start justify-between gap-4">
           <h1 className="text-4xl font-bold">{course.title}</h1>
-          <CourseRating courseId={course.id} className="mt-3" />
+          <CourseRating courseId={course.id} userId={currentUserId} className="mt-3" />
           {currentUserId === course.instructorId && (
             <Link to={`/instructor/${course.id}`}>
               <Button variant="outline" size="sm" className="shrink-0">

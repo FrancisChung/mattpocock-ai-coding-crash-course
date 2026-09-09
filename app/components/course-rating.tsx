@@ -3,14 +3,18 @@ import { Star } from "lucide-react";
 import { useFetcher } from "react-router";
 import { toast } from "sonner";
 
-export function CourseRating({ courseId, interactive = true, className = "" }: { courseId: number; interactive?: boolean; className?: string }) {
+export function CourseRating({ courseId, userId = null, interactive = true, className = "" }: { courseId: number; userId?: number | null; interactive?: boolean; className?: string }) {
   const fetcher = useFetcher<{ average: number; count: number; userRating: number | null; canRate?: boolean; error?: string }>();
   const [rating, setRating] = useState(0);
   const [average, setAverage] = useState(0);
   const [count, setCount] = useState(0);
   const [canRate, setCanRate] = useState(false);
 
-  useEffect(() => { fetcher.load(`/api/course-rating?courseId=${courseId}`); }, [courseId]);
+  useEffect(() => {
+    setRating(0);
+    setCanRate(false);
+    fetcher.load(`/api/course-rating?courseId=${courseId}`);
+  }, [courseId, userId]);
   useEffect(() => {
     if (!fetcher.data) return;
     if (fetcher.data.error) { toast.error(fetcher.data.error); return; }

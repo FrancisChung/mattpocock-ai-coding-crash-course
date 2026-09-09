@@ -67,7 +67,7 @@ export async function loader({ request }: Route.LoaderArgs) {
     enrollmentCount: getEnrollmentCountForCourse(course.id),
   }));
 
-  return { courses: coursesWithDetails };
+  return { courses: coursesWithDetails, currentUserId };
 }
 
 export async function action({ request }: Route.ActionArgs) {
@@ -126,6 +126,7 @@ function statusBadge(status: string) {
 
 function CourseRow({
   course,
+  userId,
 }: {
   course: {
     id: number;
@@ -137,6 +138,7 @@ function CourseRow({
     lessonCount: number;
     enrollmentCount: number;
   };
+  userId: number;
 }) {
   const statusFetcher = useFetcher();
 
@@ -170,7 +172,7 @@ function CourseRow({
             {course.title}
           </Link>
           <p className="text-xs text-muted-foreground">{course.slug}</p>
-          <CourseRating courseId={course.id} interactive={false} className="mt-1" />
+          <CourseRating courseId={course.id} userId={userId} interactive={false} className="mt-1" />
         </div>
       </td>
       <td className="px-4 py-3">
@@ -254,7 +256,7 @@ export function HydrateFallback() {
 }
 
 export default function AdminCourses({ loaderData }: Route.ComponentProps) {
-  const { courses } = loaderData;
+  const { courses, currentUserId } = loaderData;
 
   return (
     <div className="mx-auto max-w-7xl p-6 lg:p-8">
@@ -314,7 +316,7 @@ export default function AdminCourses({ loaderData }: Route.ComponentProps) {
                 </thead>
                 <tbody>
                   {courses.map((course) => (
-                    <CourseRow key={course.id} course={course} />
+                    <CourseRow key={course.id} course={course} userId={currentUserId} />
                   ))}
                 </tbody>
               </table>

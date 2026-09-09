@@ -209,7 +209,7 @@ export default function CourseCatalog({ loaderData }: Route.ComponentProps) {
                     <p className="line-clamp-2 text-sm text-muted-foreground">
                       {course.description}
                     </p>
-                    <CourseRating courseId={course.id} className="mt-3" />
+                    <CourseRating courseId={course.id} userId={currentUserId} className="mt-3" />
                   </CardContent>
                 {course.progress !== null && course.progress > 0 && (
                   <CardContent className="pt-0">
