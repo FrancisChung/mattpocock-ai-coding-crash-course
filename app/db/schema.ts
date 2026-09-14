@@ -28,6 +28,19 @@ export enum TeamMemberRole {
   Member = "member",
 }
 
+export enum CommentStatus {
+  Visible = "visible",
+  Hidden = "hidden",
+  Deleted = "deleted",
+}
+
+export enum CommentReportStatus {
+  Open = "open",
+  Reviewed = "reviewed",
+  Resolved = "resolved",
+  Dismissed = "dismissed",
+}
+
 // ─── Tables ───
 
 export const users = sqliteTable("users", {
@@ -116,6 +129,39 @@ export const lessons = sqliteTable("lessons", {
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
 });
+
+export const comments = sqliteTable("comments", {
+  id: integer("id").primaryKey({ autoIncrement: true }),
+  lessonId: integer("lesson_id").notNull().references(() => lessons.id),
+  userId: integer("user_id").notNull().references(() => users.id),
+  parentId: integer("parent_id"),
+  content: text("content").notNull(),
+  status: text("status").notNull().$type<CommentStatus>(),
+  isPinned: integer("is_pinned", { mode: "boolean" }).notNull().default(false),
+  isAnswered: integer("is_answered", { mode: "boolean" }).notNull().default(false),
+  createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+  updatedAt: text("updated_at").notNull().$defaultFn(() => new Date().toISOString()),
+  editedAt: text("edited_at"),
+  deletedAt: text("deleted_at"),
+});
+
+export const commentReports = sqliteTable(
+  "comment_reports",
+  {
+    id: integer("id").primaryKey({ autoIncrement: true }),
+    commentId: integer("comment_id").notNull().references(() => comments.id),
+    reporterId: integer("reporter_id").notNull().references(() => users.id),
+    reason: text("reason").notNull(),
+    explanation: text("explanation"),
+    status: text("status").notNull().$type<CommentReportStatus>(),
+    resolutionNote: text("resolution_note"),
+    createdAt: text("created_at").notNull().$defaultFn(() => new Date().toISOString()),
+    reviewedAt: text("reviewed_at"),
+  },
+  (table) => ({
+    reporterCommentUnique: uniqueIndex("comment_reports_comment_reporter_unique").on(table.commentId, table.reporterId),
+  })
+);
 
 export const enrollments = sqliteTable("enrollments", {
   id: integer("id").primaryKey({ autoIncrement: true }),

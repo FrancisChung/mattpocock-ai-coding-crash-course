@@ -49,6 +49,7 @@ import {
 import { cn, formatDuration } from "~/lib/utils";
 import { renderMarkdown } from "~/lib/markdown.server";
 import { YouTubePlayer } from "~/components/youtube-player";
+import { LessonComments } from "~/components/lesson-comments";
 import { data, isRouteErrorResponse } from "react-router";
 import { z } from "zod";
 import { resolveCountry } from "~/lib/country.server";
@@ -545,6 +546,8 @@ export default function LessonViewer({ loaderData }: Route.ComponentProps) {
               isSubmitting={isSubmittingQuiz}
             />
           )}
+
+          <LessonComments lessonId={lesson.id} />
 
           {/* Mark Complete / Up Next */}
           {enrolled && currentUserId && (

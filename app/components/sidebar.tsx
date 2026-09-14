@@ -15,6 +15,7 @@ import {
   Sun,
   LogOut,
   Settings,
+  ShieldAlert,
 } from "lucide-react";
 
 interface CurrentUser {
@@ -83,6 +84,12 @@ const navItems: NavItem[] = [
     to: "/admin/categories",
     icon: <Tag className="size-4" />,
     roles: [UserRole.Admin],
+  },
+  {
+    label: "Comment Reports",
+    to: "/admin/comments",
+    icon: <ShieldAlert className="size-4" />,
+    roles: [UserRole.Instructor, UserRole.Admin],
   },
 ];
 
