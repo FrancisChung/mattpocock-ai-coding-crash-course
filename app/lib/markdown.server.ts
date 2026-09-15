@@ -33,6 +33,14 @@ export async function renderMarkdown(markdown: string): Promise<string> {
       return `<pre><code>${escaped}</code></pre>`;
     }
   };
+  renderer.html = () => "";
 
-  return marked.parse(markdown, { renderer }) as string;
+  return marked.parse(markdown, {
+    renderer,
+    walkTokens(token) {
+      if (token.type === "link" && token.href && !/^https?:\/\//i.test(token.href)) {
+        token.href = "#";
+      }
+    },
+  }) as string;
 }

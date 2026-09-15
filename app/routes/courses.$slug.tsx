@@ -37,6 +37,7 @@ import {
   Users,
 } from "lucide-react";
 import { CourseImage } from "~/components/course-image";
+import { CourseRating } from "~/components/course-rating";
 import { UserAvatar } from "~/components/user-avatar";
 import { data, isRouteErrorResponse } from "react-router";
 import { formatDuration, formatPrice } from "~/lib/utils";
@@ -341,6 +342,7 @@ export default function CourseDetail({ loaderData }: Route.ComponentProps) {
         </div>
         <div className="mb-3 flex items-start justify-between gap-4">
           <h1 className="text-4xl font-bold">{course.title}</h1>
+          <CourseRating courseId={course.id} userId={currentUserId} className="mt-3" />
           {currentUserId === course.instructorId && (
             <Link to={`/instructor/${course.id}`}>
               <Button variant="outline" size="sm" className="shrink-0">

@@ -27,3 +27,6 @@
 # request-logger remembers which agent you chose
 /request-logger/.agent-choice.json
 
+.sandcastle/
+.claude/
+.agents/

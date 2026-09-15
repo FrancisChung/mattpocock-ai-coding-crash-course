@@ -8,6 +8,7 @@ import { Button } from "~/components/ui/button";
 import { Skeleton } from "~/components/ui/skeleton";
 import { AlertTriangle, BookOpen, Search } from "lucide-react";
 import { CourseImage } from "~/components/course-image";
+import { CourseRating } from "~/components/course-rating";
 import { UserAvatar } from "~/components/user-avatar";
 import { getCurrentUserId } from "~/lib/session";
 import { formatPrice } from "~/lib/utils";
@@ -217,11 +218,12 @@ export default function CourseCatalog({ loaderData }: Route.ComponentProps) {
                     className="mt-1"
                   />
                 </CardHeader>
-                <CardContent>
-                  <p className="line-clamp-2 text-sm text-muted-foreground">
-                    {course.description}
-                  </p>
-                </CardContent>
+                  <CardContent>
+                    <p className="line-clamp-2 text-sm text-muted-foreground">
+                      {course.description}
+                    </p>
+                    <CourseRating courseId={course.id} userId={currentUserId} className="mt-3" />
+                  </CardContent>
                 {course.progress !== null && course.progress > 0 && (
                   <CardContent className="pt-0">
                     <div className="mb-1 flex items-center justify-between text-xs">
