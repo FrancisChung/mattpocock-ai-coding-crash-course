@@ -135,6 +135,7 @@ describe("couponService", () => {
           title: "Second Course",
           slug: "second-course",
           description: "Another course",
+          salesCopy: "Second course sales copy",
           instructorId: base.instructor.id,
           categoryId: base.category.id,
           status: schema.CourseStatus.Published,

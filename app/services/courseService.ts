@@ -189,6 +189,7 @@ export function createCourse(
   title: string,
   slug: string,
   description: string,
+  salesCopy: string,
   instructorId: number,
   categoryId: number,
   coverImageUrl: string | null
@@ -199,6 +200,7 @@ export function createCourse(
       title,
       slug,
       description,
+      salesCopy,
       instructorId,
       categoryId,
       status: CourseStatus.Draft,
@@ -226,7 +228,7 @@ export function updateCourseStatus(id: number, status: CourseStatus) {
     .get();
 }
 
-export function updateCourseSalesCopy(id: number, salesCopy: string | null) {
+export function updateCourseSalesCopy(id: number, salesCopy: string) {
   return db
     .update(courses)
     .set({ salesCopy, updatedAt: new Date().toISOString() })

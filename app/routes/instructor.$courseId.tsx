@@ -93,7 +93,7 @@ const courseEditorActionSchema = z.discriminatedUnion("intent", [
   z.object({ intent: z.literal("reorder-lessons"), moduleId: z.coerce.number().int(), lessonIds: z.string().min(1, "Missing lesson IDs.") }),
   z.object({ intent: z.literal("move-lesson"), lessonId: z.coerce.number().int(), targetModuleId: z.coerce.number().int(), targetPosition: z.coerce.number().int() }),
   z.object({ intent: z.literal("delete-lesson"), lessonId: z.coerce.number().int() }),
-  z.object({ intent: z.literal("update-sales-copy"), salesCopy: z.string().optional() }),
+  z.object({ intent: z.literal("update-sales-copy"), salesCopy: z.string().trim().min(1, "Sales copy cannot be empty.") }),
 ]);
 
 export function meta({ loaderData }: Route.MetaArgs) {
@@ -353,7 +353,7 @@ export async function action({ params, request }: Route.ActionArgs) {
   }
 
   if (intent === "update-sales-copy") {
-    updateCourseSalesCopy(courseId, parsed.data.salesCopy || null);
+    updateCourseSalesCopy(courseId, parsed.data.salesCopy);
     return { success: true, field: "sales-copy" };
   }
 

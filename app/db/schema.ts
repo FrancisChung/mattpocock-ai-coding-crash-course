@@ -3,10 +3,12 @@ import {
   text,
   integer,
   real,
+  check,
   index,
   uniqueIndex,
   type AnySQLiteColumn,
 } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
 
 export enum UserRole {
   Student = "student",
@@ -62,7 +64,7 @@ export const courses = sqliteTable("courses", {
   slug: text("slug").notNull().unique(),
   description: text("description").notNull(),
   notes: text("notes"),
-  salesCopy: text("sales_copy"),
+  salesCopy: text("sales_copy").notNull(),
   instructorId: integer("instructor_id")
     .notNull()
     .references(() => users.id),
@@ -81,7 +83,9 @@ export const courses = sqliteTable("courses", {
   updatedAt: text("updated_at")
     .notNull()
     .$defaultFn(() => new Date().toISOString()),
-});
+}, (table) => [
+  check("courses_sales_copy_non_empty", sql`length(trim(${table.salesCopy})) > 0`),
+]);
 
 export const modules = sqliteTable("modules", {
   id: integer("id").primaryKey({ autoIncrement: true }),

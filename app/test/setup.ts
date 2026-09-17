@@ -65,6 +65,7 @@ export function seedBaseData(testDb: ReturnType<typeof createTestDb>) {
       title: "Test Course",
       slug: "test-course",
       description: "A test course",
+      salesCopy: "Test course sales copy",
       instructorId: instructor.id,
       categoryId: category.id,
       status: schema.CourseStatus.Published,
