@@ -17,6 +17,7 @@ import {
   LogOut,
   Settings,
   ShieldAlert,
+  ChartNoAxesCombined,
 } from "lucide-react";
 
 interface CurrentUser {
@@ -72,6 +73,12 @@ const navItems: NavItem[] = [
     label: "Questions",
     to: "/instructor/questions",
     icon: <MessageSquare className="size-4" />,
+    roles: [UserRole.Instructor, UserRole.Admin],
+  },
+  {
+    label: "Analytics",
+    to: "/instructor/analytics",
+    icon: <ChartNoAxesCombined className="size-4" />,
     roles: [UserRole.Instructor, UserRole.Admin],
   },
   {

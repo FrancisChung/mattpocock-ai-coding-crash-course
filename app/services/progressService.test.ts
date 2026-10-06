@@ -68,6 +68,24 @@ describe("progressService", () => {
   });
 
   describe("markLessonComplete", () => {
+    it("marks the enrollment complete when every course lesson is complete", () => {
+      const { lessons } = createModuleWithLessons(base.course.id, "Module 1", 1, 2);
+      testDb.insert(schema.enrollments).values({
+        userId: base.user.id,
+        courseId: base.course.id,
+      }).run();
+
+      markLessonComplete(base.user.id, lessons[0].id);
+      markLessonComplete(base.user.id, lessons[1].id);
+
+      const enrollment = testDb.select().from(schema.enrollments).get();
+      expect(enrollment?.completedAt).not.toBeNull();
+
+      resetLessonProgress(base.user.id, lessons[1].id);
+      const reopened = testDb.select().from(schema.enrollments).get();
+      expect(reopened?.completedAt).toBeNull();
+    });
+
     it("marks a lesson as completed with a new progress record", () => {
       const { lessons } = createModuleWithLessons(base.course.id, "Module 1", 1, 1);
 
