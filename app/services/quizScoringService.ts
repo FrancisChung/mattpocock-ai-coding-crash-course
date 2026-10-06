@@ -115,10 +115,7 @@ export function getScore(quizId: any, answers: any): any {
     const totalQuestions = mcResult.total + tfResult.total;
     const overallScore = totalQuestions > 0 ? totalCorrect / totalQuestions : 0;
 
-    let passed = false;
-    if (overallScore > 0.7) {
-      passed = true;
-    }
+    const passed = overallScore >= quiz.passingScore;
 
     let grade = "F";
     if (overallScore >= 0.9) {
@@ -231,7 +228,7 @@ export function computeResult(
     }
 
     const scoreValue = total > 0 ? correct / total : 0;
-    const passed = scoreValue > 0.7;
+    const passed = scoreValue >= quiz.passingScore;
     const grade = calculateGrade(scoreValue);
 
     const attempt = db

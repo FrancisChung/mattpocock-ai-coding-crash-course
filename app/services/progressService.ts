@@ -57,9 +57,10 @@ export function getLessonProgressForCourse(userId: number, courseId: number) {
 
 export function markLessonComplete(userId: number, lessonId: number) {
   const existing = getLessonProgress(userId, lessonId);
+  let result;
 
   if (existing) {
-    return db
+    result = db
       .update(lessonProgress)
       .set({
         status: LessonProgressStatus.Completed,
@@ -68,18 +69,21 @@ export function markLessonComplete(userId: number, lessonId: number) {
       .where(eq(lessonProgress.id, existing.id))
       .returning()
       .get();
+  } else {
+    result = db
+      .insert(lessonProgress)
+      .values({
+        userId,
+        lessonId,
+        status: LessonProgressStatus.Completed,
+        completedAt: new Date().toISOString(),
+      })
+      .returning()
+      .get();
   }
 
-  return db
-    .insert(lessonProgress)
-    .values({
-      userId,
-      lessonId,
-      status: LessonProgressStatus.Completed,
-      completedAt: new Date().toISOString(),
-    })
-    .returning()
-    .get();
+  syncEnrollmentCompletion(userId, lessonId);
+  return result;
 }
 
 export function markLessonInProgress(userId: number, lessonId: number) {
@@ -87,17 +91,20 @@ export function markLessonInProgress(userId: number, lessonId: number) {
 
   if (existing) {
     if (existing.status === LessonProgressStatus.Completed) {
+      syncEnrollmentCompletion(userId, lessonId);
       return existing;
     }
-    return db
+    const result = db
       .update(lessonProgress)
       .set({ status: LessonProgressStatus.InProgress })
       .where(eq(lessonProgress.id, existing.id))
       .returning()
       .get();
+    syncEnrollmentCompletion(userId, lessonId);
+    return result;
   }
 
-  return db
+  const result = db
     .insert(lessonProgress)
     .values({
       userId,
@@ -106,10 +113,12 @@ export function markLessonInProgress(userId: number, lessonId: number) {
     })
     .returning()
     .get();
+  syncEnrollmentCompletion(userId, lessonId);
+  return result;
 }
 
 export function resetLessonProgress(userId: number, lessonId: number) {
-  return db
+  const result = db
     .delete(lessonProgress)
     .where(
       and(
@@ -119,6 +128,55 @@ export function resetLessonProgress(userId: number, lessonId: number) {
     )
     .returning()
     .get();
+  syncEnrollmentCompletion(userId, lessonId);
+  return result;
+}
+
+function syncEnrollmentCompletion(userId: number, lessonId: number) {
+  const lessonCourse = db
+    .select({ courseId: modules.courseId })
+    .from(lessons)
+    .innerJoin(modules, eq(lessons.moduleId, modules.id))
+    .where(eq(lessons.id, lessonId))
+    .get();
+  if (!lessonCourse) return;
+
+  const enrollment = db
+    .select()
+    .from(enrollments)
+    .where(
+      and(
+        eq(enrollments.userId, userId),
+        eq(enrollments.courseId, lessonCourse.courseId)
+      )
+    )
+    .get();
+  if (!enrollment) return;
+
+  const lessonIds = getCourseLessonIds(lessonCourse.courseId);
+  const completed = lessonIds.length
+    ? db
+        .select({ count: sql<number>`count(distinct ${lessonProgress.lessonId})` })
+        .from(lessonProgress)
+        .where(
+          and(
+            eq(lessonProgress.userId, userId),
+            eq(lessonProgress.status, LessonProgressStatus.Completed),
+            or(...lessonIds.map((id) => eq(lessonProgress.lessonId, id)))!
+          )
+        )
+        .get()?.count ?? 0
+    : 0;
+  const isComplete = lessonIds.length > 0 && completed === lessonIds.length;
+
+  db.update(enrollments)
+    .set({
+      completedAt: isComplete
+        ? enrollment.completedAt ?? new Date().toISOString()
+        : null,
+    })
+    .where(eq(enrollments.id, enrollment.id))
+    .run();
 }
 
 function getCourseLessonIds(courseId: number): number[] {
