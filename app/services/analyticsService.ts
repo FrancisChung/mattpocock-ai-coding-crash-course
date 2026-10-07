@@ -84,18 +84,33 @@ export type LessonFunnelRow = LessonFunnelIdentity &
       }
   );
 
-export type QuizAnalyticsRow = {
+type QuizAnalyticsIdentity = {
   quizId: number;
   title: string;
   lessonTitle: string;
-  reached: number;
-  attemptedStudents: number;
-  attemptRate: number | null;
-  firstAttemptAverage: number | null;
-  firstAttemptMedian: number | null;
-  eventualPassRate: number | null;
-  suppressed: boolean;
 };
+
+export type QuizAnalyticsRow = QuizAnalyticsIdentity &
+  (
+    | {
+        reached: null;
+        attemptedStudents: null;
+        attemptRate: null;
+        firstAttemptAverage: null;
+        firstAttemptMedian: null;
+        eventualPassRate: null;
+        suppressed: true;
+      }
+    | {
+        reached: number;
+        attemptedStudents: number;
+        attemptRate: number;
+        firstAttemptAverage: number | null;
+        firstAttemptMedian: number | null;
+        eventualPassRate: number | null;
+        suppressed: false;
+      }
+  );
 
 export type AnalyticsDashboard = {
   range: AnalyticsRange;
@@ -109,7 +124,7 @@ export type AnalyticsDashboard = {
     ratingCount: number;
     firstAttemptAverage: number | null;
   };
-  ratingDistribution: Record<number, number>;
+  ratingDistribution: Record<number, number> | null;
   timeSeries: Array<{ date: string; grossSales: number; enrollments: number }>;
   courses: CourseAnalytics[];
   lessonFunnel: LessonFunnelRow[];
@@ -275,6 +290,7 @@ export function getAnalyticsDashboard(
     )
   );
 
+  const eligibleAttemptRows: Array<typeof quizAttempts.$inferSelect> = [];
   const courseAnalytics = scopedCourses.map((course) => {
     const courseEnrollments = currentEnrollments.filter(
       (row) => row.courseId === course.id
@@ -301,7 +317,16 @@ export function getAnalyticsDashboard(
     const courseAttempts = attemptRows.filter((row) =>
       courseQuizIds.has(row.quizId)
     );
-    const firstAttempts = firstAttemptsByStudentAndQuiz(courseAttempts);
+    const courseEligibleAttempts = eligibleQuizAttempts(
+      courseQuizzes,
+      courseEnrollments,
+      progressRows,
+      courseAttempts
+    );
+    eligibleAttemptRows.push(...courseEligibleAttempts);
+    const firstAttempts = firstAttemptsByStudentAndQuiz(
+      courseEligibleAttempts
+    );
     const suppressOutcomes = courseEnrollments.length < ANALYTICS_MIN_COHORT;
     const funnel = buildLessonFunnel(
       course.id,
@@ -315,7 +340,7 @@ export function getAnalyticsDashboard(
       courseLessons,
       courseEnrollments,
       progressRows,
-      courseAttempts
+      courseEligibleAttempts
     );
 
     return {
@@ -392,18 +417,21 @@ export function getAnalyticsDashboard(
     selectedQuizIds.has(row.quizId)
   );
 
-  const allFirstAttempts = firstAttemptsByStudentAndQuiz(attemptRows);
+  const allFirstAttempts = firstAttemptsByStudentAndQuiz(eligibleAttemptRows);
   const timeSeries = buildTimeSeries(
     currentPurchases,
     currentEnrollments,
     options.range
   );
-  const ratingDistribution = Object.fromEntries(
-    [1, 2, 3, 4, 5].map((rating) => [
-      rating,
-      ratingRows.filter((row) => row.rating === rating).length,
-    ])
-  );
+  const ratingDistribution =
+    ratingRows.length < ANALYTICS_MIN_COHORT
+      ? null
+      : Object.fromEntries(
+          [1, 2, 3, 4, 5].map((rating) => [
+            rating,
+            ratingRows.filter((row) => row.rating === rating).length,
+          ])
+        );
 
   return {
     range: options.range,
@@ -434,10 +462,15 @@ export function getAnalyticsDashboard(
                 currentEnrollments.length
               )
             ),
-      ratingAverage: round(mean(ratingRows.map((row) => row.rating))),
+      ratingAverage:
+        ratingRows.length < ANALYTICS_MIN_COHORT
+          ? null
+          : round(mean(ratingRows.map((row) => row.rating))),
       ratingCount: ratingRows.length,
       firstAttemptAverage: round(
-        mean(allFirstAttempts.map((attempt) => attempt.score * 100))
+        currentEnrollments.length < ANALYTICS_MIN_COHORT
+          ? null
+          : mean(allFirstAttempts.map((attempt) => attempt.score * 100))
       ),
     },
     ratingDistribution,
@@ -555,13 +588,13 @@ function buildQuizRows(
   courseEnrollments: Array<typeof enrollments.$inferSelect>,
   allProgress: Array<typeof lessonProgress.$inferSelect>,
   attempts: Array<typeof quizAttempts.$inferSelect>
-) {
+): QuizAnalyticsRow[] {
   const lessonsById = new Map(
     courseLessons.map((lesson) => [lesson.id, lesson])
   );
   const enrolledUsers = new Set(courseEnrollments.map((row) => row.userId));
 
-  return courseQuizzes.map((quiz): QuizAnalyticsRow => {
+  return courseQuizzes.map<QuizAnalyticsRow>((quiz) => {
     const reachedUsers = new Set(
       allProgress
         .filter(
@@ -588,34 +621,70 @@ function buildQuizRows(
       }
     }
     const suppressed = reachedUsers.size < ANALYTICS_MIN_COHORT;
-
-    return {
+    const identity: QuizAnalyticsIdentity = {
       quizId: quiz.id,
       title: quiz.title,
       lessonTitle: lessonsById.get(quiz.lessonId)?.title ?? "Lesson",
+    };
+    if (suppressed) {
+      return {
+        ...identity,
+        reached: null,
+        attemptedStudents: null,
+        attemptRate: null,
+        firstAttemptAverage: null,
+        firstAttemptMedian: null,
+        eventualPassRate: null,
+        suppressed: true,
+      };
+    }
+    return {
+      ...identity,
       reached: reachedUsers.size,
       attemptedStudents: attemptedUsers.size,
-      attemptRate: suppressed
-        ? null
-        : round(percent(attemptedUsers.size, reachedUsers.size)),
-      firstAttemptAverage: suppressed
-        ? null
-        : round(mean(firstAttempts.map((attempt) => attempt.score * 100))),
-      firstAttemptMedian: suppressed
-        ? null
-        : round(median(firstAttempts.map((attempt) => attempt.score * 100))),
-      eventualPassRate: suppressed
-        ? null
-        : round(
-            percent(
-              [...bestByUser.values()].filter(
-                (attempt) => attempt.score >= quiz.passingScore
-              ).length,
-              bestByUser.size
-            )
+      attemptRate:
+        round(percent(attemptedUsers.size, reachedUsers.size)) ?? 0,
+      firstAttemptAverage: round(
+        mean(firstAttempts.map((attempt) => attempt.score * 100))
+      ),
+      firstAttemptMedian: round(
+        median(firstAttempts.map((attempt) => attempt.score * 100))
+      ),
+      eventualPassRate: round(
+        percent(
+          [...bestByUser.values()].filter(
+            (attempt) => attempt.score >= quiz.passingScore
+          ).length,
+          bestByUser.size
           ),
-      suppressed,
+      ),
+      suppressed: false,
     };
+  });
+}
+
+function eligibleQuizAttempts(
+  courseQuizzes: Array<typeof quizzes.$inferSelect>,
+  courseEnrollments: Array<typeof enrollments.$inferSelect>,
+  allProgress: Array<typeof lessonProgress.$inferSelect>,
+  attempts: Array<typeof quizAttempts.$inferSelect>
+) {
+  const enrolledUsers = new Set(courseEnrollments.map((row) => row.userId));
+  const quizLessonIds = new Map(
+    courseQuizzes.map((quiz) => [quiz.id, quiz.lessonId])
+  );
+  const reachedLessonsByUser = new Set(
+    allProgress
+      .filter((row) => enrolledUsers.has(row.userId))
+      .map((row) => `${row.userId}:${row.lessonId}`)
+  );
+
+  return attempts.filter((attempt) => {
+    const lessonId = quizLessonIds.get(attempt.quizId);
+    return (
+      lessonId !== undefined &&
+      reachedLessonsByUser.has(`${attempt.userId}:${lessonId}`)
+    );
   });
 }
 
@@ -711,7 +780,7 @@ function emptyDashboard(
       ratingCount: 0,
       firstAttemptAverage: null,
     },
-    ratingDistribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+    ratingDistribution: null,
     timeSeries: [],
     courses: [],
     lessonFunnel: [],

@@ -219,6 +219,133 @@ describe("analyticsService", () => {
     });
   });
 
+  it("uses eligible learners' first attempts and their best eventual result", () => {
+    const quiz = testDb.select().from(schema.quizzes).get()!;
+    testDb
+      .insert(schema.quizAttempts)
+      .values({
+        userId: base.user.id,
+        quizId: quiz.id,
+        score: 1,
+        passed: true,
+        attemptedAt: "2026-01-12T00:00:00.000Z",
+      })
+      .run();
+    const outsider = testDb
+      .insert(schema.users)
+      .values({
+        name: "Not Eligible",
+        email: "not-eligible@example.com",
+        role: schema.UserRole.Student,
+      })
+      .returning()
+      .get();
+    testDb
+      .insert(schema.quizAttempts)
+      .values({
+        userId: outsider.id,
+        quizId: quiz.id,
+        score: 0,
+        passed: false,
+        attemptedAt: "2026-01-01T00:00:00.000Z",
+      })
+      .run();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      courseId: base.course.id,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.metrics.firstAttemptAverage).toBe(70);
+    expect(dashboard.courses[0]).toMatchObject({
+      firstAttemptAverage: 70,
+      firstAttemptMedian: 70,
+    });
+    expect(dashboard.quizzes[0]).toMatchObject({
+      reached: 5,
+      attemptedStudents: 5,
+      firstAttemptAverage: 70,
+      firstAttemptMedian: 70,
+      eventualPassRate: 80,
+    });
+  });
+
+  it("suppresses rating outcomes below five ratings", () => {
+    testDb.delete(schema.courseRatings).run();
+    const cohort = testDb.select().from(schema.enrollments).all();
+    cohort.slice(0, 4).forEach((enrollment, index) => {
+      testDb
+        .insert(schema.courseRatings)
+        .values({
+          userId: enrollment.userId,
+          courseId: base.course.id,
+          rating: index + 1,
+        })
+        .run();
+    });
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      courseId: base.course.id,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.metrics.ratingCount).toBe(4);
+    expect(dashboard.metrics.ratingAverage).toBeNull();
+    expect(dashboard.ratingDistribution).toBeNull();
+    expect(dashboard.courses[0]).toMatchObject({
+      ratingAverage: null,
+      ratingCount: 4,
+    });
+  });
+
+  it("weights portfolio ratings across individual rating rows", () => {
+    const secondCourse = testDb
+      .insert(schema.courses)
+      .values({
+        title: "Small Course",
+        slug: "small-course",
+        description: "A small course",
+        salesCopy: "Learn in a small cohort",
+        instructorId: base.instructor.id,
+        categoryId: base.category.id,
+        status: schema.CourseStatus.Published,
+        price: 1000,
+      })
+      .returning()
+      .get();
+    testDb
+      .insert(schema.courseRatings)
+      .values({
+        userId: base.user.id,
+        courseId: secondCourse.id,
+        rating: 5,
+      })
+      .run();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.metrics.ratingAverage).toBe(3.3);
+    expect(dashboard.metrics.ratingCount).toBe(6);
+    expect(dashboard.ratingDistribution).toEqual({
+      1: 1,
+      2: 1,
+      3: 1,
+      4: 1,
+      5: 2,
+    });
+  });
+
   it("orders the lesson funnel and reports cohort and step conversion", () => {
     const advancedModule = testDb
       .insert(schema.modules)
@@ -315,7 +442,20 @@ describe("analyticsService", () => {
       suppressed: true,
     });
     expect(dashboard.metrics.completionRate).toBeNull();
+    expect(dashboard.metrics.firstAttemptAverage).toBeNull();
     expect(dashboard.courses[0].completionRate).toBeNull();
+    expect(dashboard.quizzes[0]).toEqual({
+      quizId: expect.any(Number),
+      title: "Check",
+      lessonTitle: "Start",
+      reached: null,
+      attemptedStudents: null,
+      attemptRate: null,
+      firstAttemptAverage: null,
+      firstAttemptMedian: null,
+      eventualPassRate: null,
+      suppressed: true,
+    });
   });
 
   it("does not expose another instructor's courses", () => {

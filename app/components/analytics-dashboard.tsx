@@ -229,7 +229,7 @@ export function AnalyticsDashboard({
           title="Portfolio rating"
           value={
             analytics.metrics.ratingAverage === null
-              ? "—"
+              ? "Not enough data"
               : `${analytics.metrics.ratingAverage}/5`
           }
           detail={`${analytics.metrics.ratingCount} ratings`}
@@ -287,33 +287,7 @@ export function AnalyticsDashboard({
               </div>
             </CardContent>
           </Card>
-          <Card>
-            <CardHeader>
-              <CardTitle>Rating distribution</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {[5, 4, 3, 2, 1].map((rating) => {
-                const count = analytics.ratingDistribution[rating] ?? 0;
-                const width = analytics.metrics.ratingCount
-                  ? (count / analytics.metrics.ratingCount) * 100
-                  : 0;
-                return (
-                  <div key={rating} className="flex items-center gap-2 text-sm">
-                    <span className="w-8">{rating}★</span>
-                    <div className="h-2 flex-1 overflow-hidden rounded bg-muted">
-                      <div
-                        className="h-full bg-amber-500"
-                        style={{ width: `${width}%` }}
-                      />
-                    </div>
-                    <span className="w-6 text-right text-muted-foreground">
-                      {count}
-                    </span>
-                  </div>
-                );
-              })}
-            </CardContent>
-          </Card>
+          <RatingDistributionCard analytics={analytics} />
         </div>
       ) : null}
 
@@ -419,6 +393,7 @@ export function AnalyticsDashboard({
 function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
   return (
     <div className="grid gap-6 xl:grid-cols-2">
+      <RatingDistributionCard analytics={analytics} />
       <Card>
         <CardHeader>
           <CardTitle>Lesson progression</CardTitle>
@@ -518,5 +493,41 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function RatingDistributionCard({ analytics }: { analytics: AnalyticsData }) {
+  return (
+    <Card>
+      <CardHeader>
+        <CardTitle>Current rating distribution</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-3">
+        {analytics.ratingDistribution === null ? (
+          <p className="text-sm text-muted-foreground">Not enough data</p>
+        ) : (
+          [5, 4, 3, 2, 1].map((rating) => {
+            const count = analytics.ratingDistribution?.[rating] ?? 0;
+            const width = analytics.metrics.ratingCount
+              ? (count / analytics.metrics.ratingCount) * 100
+              : 0;
+            return (
+              <div key={rating} className="flex items-center gap-2 text-sm">
+                <span className="w-8">{rating}★</span>
+                <div className="h-2 flex-1 overflow-hidden rounded bg-muted">
+                  <div
+                    className="h-full bg-amber-500"
+                    style={{ width: `${width}%` }}
+                  />
+                </div>
+                <span className="w-6 text-right text-muted-foreground">
+                  {count}
+                </span>
+              </div>
+            );
+          })
+        )}
+      </CardContent>
+    </Card>
   );
 }
