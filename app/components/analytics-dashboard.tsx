@@ -455,7 +455,7 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
                       </div>
                     )}
                   </div>
-                  {!row.suppressed && row.learnerLoss > 0 ? (
+                  {!row.suppressed && (row.learnerLoss ?? 0) > 0 ? (
                     <div className="mt-2 flex items-center text-xs text-amber-700">
                       <ArrowDownRight className="mr-1 size-3" />
                       {row.learnerLoss} learner drop-off

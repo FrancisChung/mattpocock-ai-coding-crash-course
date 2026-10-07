@@ -139,6 +139,40 @@ describe("analyticsService", () => {
     expect(dashboard.quizzes).toHaveLength(0);
   });
 
+  it("reports completion for the selected enrollment cohort", () => {
+    const earlierStudent = testDb
+      .insert(schema.users)
+      .values({
+        name: "Earlier Student",
+        email: "earlier-student@example.com",
+        role: schema.UserRole.Student,
+      })
+      .returning()
+      .get();
+    testDb
+      .insert(schema.enrollments)
+      .values({
+        userId: earlierStudent.id,
+        courseId: base.course.id,
+        enrolledAt: "2025-12-10T00:00:00.000Z",
+        completedAt: "2025-12-20T00:00:00.000Z",
+      })
+      .run();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.metrics.completionRate).toBe(40);
+    expect(dashboard.courses[0]).toMatchObject({
+      enrollments: 5,
+      completionRate: 40,
+    });
+  });
+
   it("includes sales across long all-time ranges in the time series", () => {
     const dashboard = getAnalyticsDashboard({
       viewerId: base.instructor.id,
@@ -182,6 +216,103 @@ describe("analyticsService", () => {
       firstAttemptMedian: 70,
       eventualPassRate: 60,
       suppressed: false,
+    });
+  });
+
+  it("orders the lesson funnel and reports cohort and step conversion", () => {
+    const advancedModule = testDb
+      .insert(schema.modules)
+      .values({ courseId: base.course.id, title: "Advanced", position: 2 })
+      .returning()
+      .get();
+    const endLesson = testDb
+      .insert(schema.lessons)
+      .values({ moduleId: advancedModule.id, title: "End", position: 2 })
+      .returning()
+      .get();
+    const middleLesson = testDb
+      .insert(schema.lessons)
+      .values({ moduleId: advancedModule.id, title: "Middle", position: 1 })
+      .returning()
+      .get();
+    const cohort = testDb.select().from(schema.enrollments).all();
+
+    cohort.slice(0, 4).forEach((enrollment) => {
+      testDb
+        .insert(schema.lessonProgress)
+        .values({
+          userId: enrollment.userId,
+          lessonId: middleLesson.id,
+          status: schema.LessonProgressStatus.Completed,
+        })
+        .run();
+    });
+    cohort.slice(0, 2).forEach((enrollment) => {
+      testDb
+        .insert(schema.lessonProgress)
+        .values({
+          userId: enrollment.userId,
+          lessonId: endLesson.id,
+          status: schema.LessonProgressStatus.Completed,
+        })
+        .run();
+    });
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      courseId: base.course.id,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.lessonFunnel).toMatchObject([
+      {
+        lessonTitle: "Start",
+        cohortConversion: 100,
+        stepConversion: 100,
+        learnerLoss: 0,
+      },
+      {
+        lessonTitle: "Middle",
+        cohortConversion: 80,
+        stepConversion: 80,
+        learnerLoss: 1,
+      },
+      {
+        lessonTitle: "End",
+        cohortConversion: 40,
+        stepConversion: 50,
+        learnerLoss: 2,
+      },
+    ]);
+  });
+
+  it("suppresses lesson outcomes below the five-person cohort boundary", () => {
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      courseId: base.course.id,
+      range: {
+        from: new Date("2026-01-02T00:00:00.000Z"),
+        to: new Date("2026-01-06T00:00:00.000Z"),
+        previousFrom: new Date("2025-12-29T00:00:00.000Z"),
+        previousTo: new Date("2026-01-02T00:00:00.000Z"),
+        label: "January 2 to January 5",
+      },
+      status: "all",
+    });
+
+    expect(dashboard.lessonFunnel[0]).toEqual({
+      lessonId: expect.any(Number),
+      lessonTitle: "Start",
+      moduleTitle: "Core",
+      reached: null,
+      completed: null,
+      cohortConversion: null,
+      stepConversion: null,
+      learnerLoss: null,
+      suppressed: true,
     });
   });
 

@@ -62,11 +62,11 @@ export type LessonFunnelRow = {
   lessonId: number;
   lessonTitle: string;
   moduleTitle: string;
-  reached: number;
-  completed: number;
-  cohortConversion: number;
+  reached: number | null;
+  completed: number | null;
+  cohortConversion: number | null;
   stepConversion: number | null;
-  learnerLoss: number;
+  learnerLoss: number | null;
   suppressed: boolean;
 };
 
@@ -262,7 +262,7 @@ export function getAnalyticsDashboard(
   );
 
   const courseAnalytics = scopedCourses.map((course) => {
-    const courseEnrollments = enrollmentRows.filter(
+    const courseEnrollments = currentEnrollments.filter(
       (row) => row.courseId === course.id
     );
     const coursePurchases = currentPurchases.filter(
@@ -346,14 +346,14 @@ export function getAnalyticsDashboard(
       largestDropOff:
         suppressOutcomes || funnel.length === 0
           ? null
-          : Math.max(...funnel.map((row) => row.learnerLoss)),
+          : Math.max(...funnel.map((row) => row.learnerLoss ?? 0)),
     } satisfies CourseAnalytics;
   });
 
   const selectedCourse =
     options.courseId && scopedCourses.length === 1 ? scopedCourses[0] : null;
   const selectedCourseEnrollments = selectedCourse
-    ? enrollmentRows.filter((row) => row.courseId === selectedCourse.id)
+    ? currentEnrollments.filter((row) => row.courseId === selectedCourse.id)
     : [];
   const selectedModuleIds = new Set(
     selectedCourse
@@ -408,8 +408,8 @@ export function getAnalyticsDashboard(
       },
       completionRate: round(
         percent(
-          enrollmentRows.filter((row) => row.completedAt !== null).length,
-          enrollmentRows.length
+          currentEnrollments.filter((row) => row.completedAt !== null).length,
+          currentEnrollments.length
         )
       ),
       ratingAverage: round(mean(ratingRows.map((row) => row.rating))),
@@ -495,16 +495,21 @@ function buildLessonFunnel(
         .map((row) => row.userId)
     ).size;
     const learnerLoss = Math.max(0, previousReached - reached);
+    const suppressed = enrolledUsers.size < ANALYTICS_MIN_COHORT;
     const row: LessonFunnelRow = {
       lessonId: lesson.id,
       lessonTitle: lesson.title,
       moduleTitle: modulesById.get(lesson.moduleId)?.title ?? "Module",
-      reached,
-      completed,
-      cohortConversion: round(percent(reached, enrolledUsers.size)) ?? 0,
-      stepConversion: round(percent(reached, previousReached)),
-      learnerLoss,
-      suppressed: enrolledUsers.size < ANALYTICS_MIN_COHORT,
+      reached: suppressed ? null : reached,
+      completed: suppressed ? null : completed,
+      cohortConversion: suppressed
+        ? null
+        : (round(percent(reached, enrolledUsers.size)) ?? 0),
+      stepConversion: suppressed
+        ? null
+        : round(percent(reached, previousReached)),
+      learnerLoss: suppressed ? null : learnerLoss,
+      suppressed,
     };
     previousReached = reached;
     return row;
