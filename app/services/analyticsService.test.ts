@@ -314,6 +314,8 @@ describe("analyticsService", () => {
       learnerLoss: null,
       suppressed: true,
     });
+    expect(dashboard.metrics.completionRate).toBeNull();
+    expect(dashboard.courses[0].completionRate).toBeNull();
   });
 
   it("does not expose another instructor's courses", () => {

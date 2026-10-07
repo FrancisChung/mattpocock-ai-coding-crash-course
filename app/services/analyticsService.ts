@@ -58,17 +58,31 @@ export type CourseAnalytics = {
   largestDropOff: number | null;
 };
 
-export type LessonFunnelRow = {
+type LessonFunnelIdentity = {
   lessonId: number;
   lessonTitle: string;
   moduleTitle: string;
-  reached: number | null;
-  completed: number | null;
-  cohortConversion: number | null;
-  stepConversion: number | null;
-  learnerLoss: number | null;
-  suppressed: boolean;
 };
+
+export type LessonFunnelRow = LessonFunnelIdentity &
+  (
+    | {
+        reached: null;
+        completed: null;
+        cohortConversion: null;
+        stepConversion: null;
+        learnerLoss: null;
+        suppressed: true;
+      }
+    | {
+        reached: number;
+        completed: number;
+        cohortConversion: number;
+        stepConversion: number | null;
+        learnerLoss: number;
+        suppressed: false;
+      }
+  );
 
 export type QuizAnalyticsRow = {
   quizId: number;
@@ -346,7 +360,11 @@ export function getAnalyticsDashboard(
       largestDropOff:
         suppressOutcomes || funnel.length === 0
           ? null
-          : Math.max(...funnel.map((row) => row.learnerLoss ?? 0)),
+          : Math.max(
+              ...funnel.flatMap((row) =>
+                row.suppressed ? [] : [row.learnerLoss]
+              )
+            ),
     } satisfies CourseAnalytics;
   });
 
@@ -406,12 +424,16 @@ export function getAnalyticsDashboard(
         value: currentEnrollments.length,
         previous: previousEnrollments.length,
       },
-      completionRate: round(
-        percent(
-          currentEnrollments.filter((row) => row.completedAt !== null).length,
-          currentEnrollments.length
-        )
-      ),
+      completionRate:
+        currentEnrollments.length < ANALYTICS_MIN_COHORT
+          ? null
+          : round(
+              percent(
+                currentEnrollments.filter((row) => row.completedAt !== null)
+                  .length,
+                currentEnrollments.length
+              )
+            ),
       ratingAverage: round(mean(ratingRows.map((row) => row.rating))),
       ratingCount: ratingRows.length,
       firstAttemptAverage: round(
@@ -467,7 +489,7 @@ function buildLessonFunnel(
   courseLessons: Array<typeof lessons.$inferSelect>,
   allModules: Array<typeof modules.$inferSelect>,
   allProgress: Array<typeof lessonProgress.$inferSelect>
-) {
+): LessonFunnelRow[] {
   const modulesById = new Map(allModules.map((module) => [module.id, module]));
   const ordered = [...courseLessons].sort((a, b) => {
     const aModule = modulesById.get(a.moduleId);
@@ -484,7 +506,7 @@ function buildLessonFunnel(
   );
   let previousReached = enrolledUsers.size;
 
-  return ordered.map((lesson) => {
+  return ordered.map<LessonFunnelRow>((lesson) => {
     const rows = allProgress.filter(
       (row) => row.lessonId === lesson.id && enrolledUsers.has(row.userId)
     );
@@ -495,24 +517,35 @@ function buildLessonFunnel(
         .map((row) => row.userId)
     ).size;
     const learnerLoss = Math.max(0, previousReached - reached);
+    const cohortConversion = round(percent(reached, enrolledUsers.size)) ?? 0;
+    const stepConversion = round(percent(reached, previousReached));
     const suppressed = enrolledUsers.size < ANALYTICS_MIN_COHORT;
-    const row: LessonFunnelRow = {
+    const identity: LessonFunnelIdentity = {
       lessonId: lesson.id,
       lessonTitle: lesson.title,
       moduleTitle: modulesById.get(lesson.moduleId)?.title ?? "Module",
-      reached: suppressed ? null : reached,
-      completed: suppressed ? null : completed,
-      cohortConversion: suppressed
-        ? null
-        : (round(percent(reached, enrolledUsers.size)) ?? 0),
-      stepConversion: suppressed
-        ? null
-        : round(percent(reached, previousReached)),
-      learnerLoss: suppressed ? null : learnerLoss,
-      suppressed,
     };
     previousReached = reached;
-    return row;
+    if (suppressed) {
+      return {
+        ...identity,
+        reached: null,
+        completed: null,
+        cohortConversion: null,
+        stepConversion: null,
+        learnerLoss: null,
+        suppressed: true,
+      };
+    }
+    return {
+      ...identity,
+      reached,
+      completed,
+      cohortConversion,
+      stepConversion,
+      learnerLoss,
+      suppressed: false,
+    };
   });
 }
 

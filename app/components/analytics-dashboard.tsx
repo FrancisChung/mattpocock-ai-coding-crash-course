@@ -219,10 +219,10 @@ export function AnalyticsDashboard({
           title="Cohort completion"
           value={
             analytics.metrics.completionRate === null
-              ? "—"
+              ? "Not enough data"
               : `${analytics.metrics.completionRate}%`
           }
-          detail="All-time enrollment cohorts"
+          detail="Selected-period cohort; recent learners may still be progressing"
           icon={<BookOpenCheck className="size-4" />}
         />
         <MetricCard
@@ -378,7 +378,7 @@ export function AnalyticsDashboard({
                     <td>{course.enrollments}</td>
                     <td>
                       {course.completionRate === null
-                        ? "—"
+                        ? "Not enough data"
                         : `${course.completionRate}%`}
                     </td>
                     <td>
@@ -455,7 +455,7 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
                       </div>
                     )}
                   </div>
-                  {!row.suppressed && (row.learnerLoss ?? 0) > 0 ? (
+                  {!row.suppressed && row.learnerLoss > 0 ? (
                     <div className="mt-2 flex items-center text-xs text-amber-700">
                       <ArrowDownRight className="mr-1 size-3" />
                       {row.learnerLoss} learner drop-off
