@@ -239,7 +239,7 @@ export function AnalyticsDashboard({
           title="First-attempt score"
           value={
             analytics.metrics.firstAttemptAverage === null
-              ? "—"
+              ? "Not enough data"
               : `${analytics.metrics.firstAttemptAverage}%`
           }
           detail="Students who attempted a quiz"
@@ -365,7 +365,7 @@ export function AnalyticsDashboard({
                     </td>
                     <td>
                       {course.firstAttemptAverage === null
-                        ? "—"
+                        ? "Not enough data"
                         : `${course.firstAttemptAverage}%`}
                     </td>
                     <td>
@@ -464,7 +464,13 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
                       Not enough data (minimum cohort: 5)
                     </p>
                   ) : (
-                    <div className="mt-2 grid grid-cols-3 gap-2 text-sm">
+                    <div className="mt-2 grid grid-cols-2 gap-2 text-sm lg:grid-cols-4">
+                      <div>
+                        <span className="block text-xs text-muted-foreground">
+                          Lesson reach
+                        </span>
+                        {quiz.reached} learners
+                      </div>
                       <div>
                         <span className="block text-xs text-muted-foreground">
                           Attempt rate
@@ -475,14 +481,18 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
                         <span className="block text-xs text-muted-foreground">
                           First attempt
                         </span>
-                        {quiz.firstAttemptAverage ?? 0}% avg ·{" "}
-                        {quiz.firstAttemptMedian ?? 0}% median
+                        {quiz.firstAttemptAverage === null ||
+                        quiz.firstAttemptMedian === null
+                          ? "No attempts"
+                          : `${quiz.firstAttemptAverage}% avg · ${quiz.firstAttemptMedian}% median`}
                       </div>
                       <div>
                         <span className="block text-xs text-muted-foreground">
                           Eventual pass
                         </span>
-                        {quiz.eventualPassRate ?? 0}%
+                        {quiz.eventualPassRate === null
+                          ? "No attempts"
+                          : `${quiz.eventualPassRate}%`}
                       </div>
                     </div>
                   )}

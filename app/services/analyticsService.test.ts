@@ -304,6 +304,34 @@ describe("analyticsService", () => {
     });
   });
 
+  it("does not aggregate scores from a quiz with fewer than five eligible learners", () => {
+    const lesson = testDb.select().from(schema.lessons).get()!;
+    testDb.delete(schema.lessonProgress).run();
+    testDb
+      .insert(schema.lessonProgress)
+      .values({
+        userId: base.user.id,
+        lessonId: lesson.id,
+        status: schema.LessonProgressStatus.Completed,
+      })
+      .run();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      courseId: base.course.id,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.quizzes[0].suppressed).toBe(true);
+    expect(dashboard.courses[0]).toMatchObject({
+      firstAttemptAverage: null,
+      firstAttemptMedian: null,
+    });
+    expect(dashboard.metrics.firstAttemptAverage).toBeNull();
+  });
+
   it("weights portfolio ratings across individual rating rows", () => {
     const secondCourse = testDb
       .insert(schema.courses)

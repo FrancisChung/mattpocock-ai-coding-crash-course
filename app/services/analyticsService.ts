@@ -323,10 +323,6 @@ export function getAnalyticsDashboard(
       progressRows,
       courseAttempts
     );
-    eligibleAttemptRows.push(...courseEligibleAttempts);
-    const firstAttempts = firstAttemptsByStudentAndQuiz(
-      courseEligibleAttempts
-    );
     const suppressOutcomes = courseEnrollments.length < ANALYTICS_MIN_COHORT;
     const funnel = buildLessonFunnel(
       course.id,
@@ -342,6 +338,16 @@ export function getAnalyticsDashboard(
       progressRows,
       courseEligibleAttempts
     );
+    const reportableQuizIds = new Set(
+      courseQuizRows
+        .filter((row) => !row.suppressed)
+        .map((row) => row.quizId)
+    );
+    const reportableAttempts = courseEligibleAttempts.filter((attempt) =>
+      reportableQuizIds.has(attempt.quizId)
+    );
+    eligibleAttemptRows.push(...reportableAttempts);
+    const firstAttempts = firstAttemptsByStudentAndQuiz(reportableAttempts);
 
     return {
       ...course,
@@ -365,23 +371,21 @@ export function getAnalyticsDashboard(
           ? null
           : round(mean(courseRatings.map((row) => row.rating))),
       ratingCount: courseRatings.length,
-      firstAttemptAverage: suppressOutcomes
-        ? null
-        : round(mean(firstAttempts.map((attempt) => attempt.score * 100))),
-      firstAttemptMedian: suppressOutcomes
-        ? null
-        : round(median(firstAttempts.map((attempt) => attempt.score * 100))),
-      quizAttemptRate: suppressOutcomes
-        ? null
-        : round(
-            courseQuizRows.length
-              ? mean(
-                  courseQuizRows
-                    .map((row) => row.attemptRate)
-                    .filter((value): value is number => value !== null)
-                )
-              : null
-          ),
+      firstAttemptAverage: round(
+        mean(firstAttempts.map((attempt) => attempt.score * 100))
+      ),
+      firstAttemptMedian: round(
+        median(firstAttempts.map((attempt) => attempt.score * 100))
+      ),
+      quizAttemptRate: round(
+        courseQuizRows.length
+          ? mean(
+              courseQuizRows
+                .map((row) => row.attemptRate)
+                .filter((value): value is number => value !== null)
+            )
+          : null
+      ),
       largestDropOff:
         suppressOutcomes || funnel.length === 0
           ? null
@@ -468,9 +472,7 @@ export function getAnalyticsDashboard(
           : round(mean(ratingRows.map((row) => row.rating))),
       ratingCount: ratingRows.length,
       firstAttemptAverage: round(
-        currentEnrollments.length < ANALYTICS_MIN_COHORT
-          ? null
-          : mean(allFirstAttempts.map((attempt) => attempt.score * 100))
+        mean(allFirstAttempts.map((attempt) => attempt.score * 100))
       ),
     },
     ratingDistribution,
