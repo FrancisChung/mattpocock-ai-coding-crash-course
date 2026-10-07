@@ -139,6 +139,27 @@ describe("analyticsService", () => {
     expect(dashboard.quizzes).toHaveLength(0);
   });
 
+  it("includes sales across long all-time ranges in the time series", () => {
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      range: {
+        from: new Date("2000-01-01T00:00:00.000Z"),
+        to: new Date("2026-02-01T00:00:00.000Z"),
+        previousFrom: new Date("1973-12-01T00:00:00.000Z"),
+        previousTo: new Date("2000-01-01T00:00:00.000Z"),
+        label: "All time",
+      },
+      status: "all",
+    });
+
+    expect(dashboard.timeSeries).toContainEqual({
+      date: "2026-01-05",
+      grossSales: 12000,
+      enrollments: 1,
+    });
+  });
+
   it("exposes unsuppressed course drill-downs at the five-person threshold", () => {
     const dashboard = getAnalyticsDashboard({
       viewerId: base.instructor.id,
@@ -184,5 +205,18 @@ describe("analyticsService", () => {
 
     expect(dashboard.courses).toEqual([]);
     expect(dashboard.metrics.grossSales.value).toBe(0);
+  });
+
+  it("returns an empty dashboard when valid filters match no courses", () => {
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      range,
+      status: schema.CourseStatus.Draft,
+    });
+
+    expect(dashboard.courses).toEqual([]);
+    expect(dashboard.timeSeries).toEqual([]);
+    expect(dashboard.metrics.grossSales).toEqual({ value: 0, previous: 0 });
   });
 });

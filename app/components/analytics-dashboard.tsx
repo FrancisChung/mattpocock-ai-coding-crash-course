@@ -32,8 +32,7 @@ const money = new Intl.NumberFormat("en-US", {
 });
 
 function comparison(current: number, previous: number) {
-  if (previous === 0)
-    return current === 0 ? "No change" : "No prior-period data";
+  if (previous === 0) return "No prior-period data";
   const change = ((current - previous) / previous) * 100;
   return `${change >= 0 ? "+" : ""}${change.toFixed(1)}% vs prior period`;
 }

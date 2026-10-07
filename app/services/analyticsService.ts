@@ -296,6 +296,13 @@ export function getAnalyticsDashboard(
       moduleRows,
       progressRows
     );
+    const courseQuizRows = buildQuizRows(
+      courseQuizzes,
+      courseLessons,
+      courseEnrollments,
+      progressRows,
+      courseAttempts
+    );
 
     return {
       ...course,
@@ -328,21 +335,9 @@ export function getAnalyticsDashboard(
       quizAttemptRate: suppressOutcomes
         ? null
         : round(
-            buildQuizRows(
-              courseQuizzes,
-              courseLessons,
-              courseEnrollments,
-              progressRows,
-              courseAttempts
-            ).length
+            courseQuizRows.length
               ? mean(
-                  buildQuizRows(
-                    courseQuizzes,
-                    courseLessons,
-                    courseEnrollments,
-                    progressRows,
-                    courseAttempts
-                  )
+                  courseQuizRows
                     .map((row) => row.attemptRate)
                     .filter((value): value is number => value !== null)
                 )
@@ -595,11 +590,26 @@ function buildTimeSeries(
     string,
     { date: string; grossSales: number; enrollments: number }
   >();
-  const cursor = new Date(range.from);
-  while (cursor < range.to && days.size < 366) {
-    const date = cursor.toISOString().slice(0, 10);
-    days.set(date, { date, grossSales: 0, enrollments: 0 });
-    cursor.setUTCDate(cursor.getUTCDate() + 1);
+
+  const rangeDays = Math.ceil(
+    (range.to.getTime() - range.from.getTime()) / (24 * 60 * 60 * 1000)
+  );
+  if (rangeDays <= 366) {
+    const cursor = new Date(range.from);
+    while (cursor < range.to) {
+      const date = cursor.toISOString().slice(0, 10);
+      days.set(date, { date, grossSales: 0, enrollments: 0 });
+      cursor.setUTCDate(cursor.getUTCDate() + 1);
+    }
+  } else {
+    for (const date of [
+      ...currentPurchases.map((purchase) => purchase.createdAt.slice(0, 10)),
+      ...currentEnrollments.map((enrollment) =>
+        enrollment.enrolledAt.slice(0, 10)
+      ),
+    ]) {
+      days.set(date, { date, grossSales: 0, enrollments: 0 });
+    }
   }
   for (const purchase of currentPurchases) {
     const row = days.get(purchase.createdAt.slice(0, 10));
@@ -609,7 +619,7 @@ function buildTimeSeries(
     const row = days.get(enrollment.enrolledAt.slice(0, 10));
     if (row) row.enrollments += 1;
   }
-  return [...days.values()];
+  return [...days.values()].sort((a, b) => a.date.localeCompare(b.date));
 }
 
 function buildInsights(courseRows: CourseAnalytics[]) {
