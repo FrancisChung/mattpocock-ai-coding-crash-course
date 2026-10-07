@@ -18,6 +18,12 @@ import {
 
 export const ANALYTICS_MIN_COHORT = 5;
 
+const INSIGHT_THRESHOLDS = {
+  progressionLoss: ANALYTICS_MIN_COHORT,
+  firstAttemptAverage: 70,
+  ratingAverage: 3.5,
+} as const;
+
 export type AnalyticsRange = {
   from: Date;
   to: Date;
@@ -739,35 +745,35 @@ function buildTimeSeries(
 function buildInsights(courseRows: CourseAnalytics[]) {
   const insights: AnalyticsDashboard["insights"] = [];
   for (const course of courseRows) {
-    if ((course.largestDropOff ?? 0) >= ANALYTICS_MIN_COHORT) {
+    if (
+      (course.largestDropOff ?? 0) >= INSIGHT_THRESHOLDS.progressionLoss
+    ) {
       insights.push({
         title: `Review ${course.title}'s lesson funnel`,
         detail: `${course.largestDropOff} learners are lost at its largest progression step.`,
-        rule:
-          "Triggered when at least 5 learners are lost between progression steps.",
+        rule: `Triggered when at least ${INSIGHT_THRESHOLDS.progressionLoss} learners are lost between progression steps.`,
         courseId: course.id,
       });
     }
     if (
       course.firstAttemptAverage !== null &&
-      course.firstAttemptAverage < 70
+      course.firstAttemptAverage < INSIGHT_THRESHOLDS.firstAttemptAverage
     ) {
       insights.push({
         title: `Quiz difficulty in ${course.title}`,
         detail: `The first-attempt average is ${course.firstAttemptAverage}%.`,
-        rule: "Triggered when the first-attempt average is below 70%.",
+        rule: `Triggered when the first-attempt average is below ${INSIGHT_THRESHOLDS.firstAttemptAverage}%.`,
         courseId: course.id,
       });
     }
     if (
       course.ratingCount >= ANALYTICS_MIN_COHORT &&
-      (course.ratingAverage ?? 5) < 3.5
+      (course.ratingAverage ?? 5) < INSIGHT_THRESHOLDS.ratingAverage
     ) {
       insights.push({
         title: `Course rating needs attention`,
         detail: `${course.title} is rated ${course.ratingAverage}/5 across ${course.ratingCount} ratings.`,
-        rule:
-          "Triggered when at least 5 ratings have an average below 3.5/5.",
+        rule: `Triggered when at least ${ANALYTICS_MIN_COHORT} ratings have an average below ${INSIGHT_THRESHOLDS.ratingAverage}/5.`,
         courseId: course.id,
       });
     }
