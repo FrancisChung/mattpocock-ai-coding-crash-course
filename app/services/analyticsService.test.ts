@@ -508,6 +508,151 @@ describe("analyticsService", () => {
     expect(dashboard.metrics.grossSales.value).toBe(0);
   });
 
+  it("does not let an instructor broaden scope with an instructor filter", () => {
+    const otherInstructor = testDb
+      .insert(schema.users)
+      .values({
+        name: "Other Instructor",
+        email: "other-filtered-instructor@example.com",
+        role: schema.UserRole.Instructor,
+      })
+      .returning()
+      .get();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: otherInstructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      instructorId: base.instructor.id,
+      courseId: base.course.id,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.selectedInstructorId).toBe(otherInstructor.id);
+    expect(dashboard.courses).toEqual([]);
+  });
+
+  it("lets an administrator view the platform and filter by instructor", () => {
+    const admin = testDb
+      .insert(schema.users)
+      .values({
+        name: "Admin",
+        email: "analytics-admin@example.com",
+        role: schema.UserRole.Admin,
+      })
+      .returning()
+      .get();
+    const otherInstructor = testDb
+      .insert(schema.users)
+      .values({
+        name: "Other Instructor",
+        email: "admin-filter-instructor@example.com",
+        role: schema.UserRole.Instructor,
+      })
+      .returning()
+      .get();
+    const otherCourse = testDb
+      .insert(schema.courses)
+      .values({
+        title: "Other Course",
+        slug: "other-course",
+        description: "Another course",
+        salesCopy: "Learn another topic",
+        instructorId: otherInstructor.id,
+        categoryId: base.category.id,
+        status: schema.CourseStatus.Published,
+      })
+      .returning()
+      .get();
+
+    const platform = getAnalyticsDashboard({
+      viewerId: admin.id,
+      viewerRole: schema.UserRole.Admin,
+      range,
+      status: "all",
+    });
+    const filtered = getAnalyticsDashboard({
+      viewerId: admin.id,
+      viewerRole: schema.UserRole.Admin,
+      instructorId: otherInstructor.id,
+      range,
+      status: "all",
+    });
+
+    expect(platform.courses.map((course) => course.id)).toEqual([
+      base.course.id,
+      otherCourse.id,
+    ]);
+    expect(filtered.selectedInstructorId).toBe(otherInstructor.id);
+    expect(filtered.courses.map((course) => course.id)).toEqual([
+      otherCourse.id,
+    ]);
+  });
+
+  it("applies the five-learner privacy boundary to administrators", () => {
+    const admin = testDb
+      .insert(schema.users)
+      .values({
+        name: "Privacy Admin",
+        email: "privacy-admin@example.com",
+        role: schema.UserRole.Admin,
+      })
+      .returning()
+      .get();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: admin.id,
+      viewerRole: schema.UserRole.Admin,
+      courseId: base.course.id,
+      range: {
+        from: new Date("2026-01-02T00:00:00.000Z"),
+        to: new Date("2026-01-06T00:00:00.000Z"),
+        previousFrom: new Date("2025-12-29T00:00:00.000Z"),
+        previousTo: new Date("2026-01-02T00:00:00.000Z"),
+        label: "January 2 to January 5",
+      },
+      status: "all",
+    });
+
+    expect(dashboard.metrics.completionRate).toBeNull();
+    expect(dashboard.courses[0].completionRate).toBeNull();
+    expect(dashboard.lessonFunnel[0].suppressed).toBe(true);
+    expect(dashboard.quizzes[0].suppressed).toBe(true);
+  });
+
+  it("explains each deterministic insight rule", () => {
+    const module = testDb.select().from(schema.modules).get()!;
+    testDb
+      .insert(schema.lessons)
+      .values({ moduleId: module.id, title: "Advanced", position: 2 })
+      .run();
+    testDb.update(schema.quizAttempts).set({ score: 0.5 }).run();
+
+    const dashboard = getAnalyticsDashboard({
+      viewerId: base.instructor.id,
+      viewerRole: schema.UserRole.Instructor,
+      range,
+      status: "all",
+    });
+
+    expect(dashboard.insights).toEqual([
+      expect.objectContaining({
+        title: "Review Test Course's lesson funnel",
+        rule:
+          "Triggered when at least 5 learners are lost between progression steps.",
+      }),
+      expect.objectContaining({
+        title: "Quiz difficulty in Test Course",
+        rule: "Triggered when the first-attempt average is below 70%.",
+      }),
+      expect.objectContaining({
+        title: "Course rating needs attention",
+        rule:
+          "Triggered when at least 5 ratings have an average below 3.5/5.",
+      }),
+    ]);
+  });
+
   it("returns an empty dashboard when valid filters match no courses", () => {
     const dashboard = getAnalyticsDashboard({
       viewerId: base.instructor.id,

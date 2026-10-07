@@ -106,7 +106,9 @@ export function AnalyticsDashboard({
           <p className="mt-1 text-muted-foreground">
             {detailCourse
               ? "Lesson progression, quiz effectiveness, and course outcomes"
-              : "Revenue and learning outcomes across your course portfolio"}
+              : viewerRole === UserRole.Admin
+                ? "Revenue and learning outcomes across the platform"
+                : "Revenue and learning outcomes across your course portfolio"}
           </p>
         </div>
         <Button asChild variant="outline">
@@ -193,7 +195,8 @@ export function AnalyticsDashboard({
 
       <p className="text-xs text-muted-foreground">
         {analytics.range.label} · Updated now · Monetary values are gross sales
-        in USD.
+        in USD. Historical records are attributed to each course's current
+        owner because ownership history is not stored.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -253,7 +256,8 @@ export function AnalyticsDashboard({
             <BarChart3 className="mx-auto mb-3 size-10 text-muted-foreground" />
             <h2 className="font-semibold">No analytics yet</h2>
             <p className="mt-1 text-sm text-muted-foreground">
-              Publish a course or adjust the filters to start seeing results.
+              No courses match these filters. Adjust the filters to see
+              available analytics.
             </p>
           </CardContent>
         </Card>
@@ -309,6 +313,9 @@ export function AnalyticsDashboard({
                 <div className="font-medium">{insight.title}</div>
                 <p className="mt-1 text-sm text-muted-foreground">
                   {insight.detail}
+                </p>
+                <p className="mt-2 text-xs text-muted-foreground">
+                  {insight.rule}
                 </p>
               </Link>
             ))}

@@ -129,7 +129,12 @@ export type AnalyticsDashboard = {
   courses: CourseAnalytics[];
   lessonFunnel: LessonFunnelRow[];
   quizzes: QuizAnalyticsRow[];
-  insights: Array<{ title: string; detail: string; courseId: number }>;
+  insights: Array<{
+    title: string;
+    detail: string;
+    rule: string;
+    courseId: number;
+  }>;
 };
 
 function mean(values: number[]) {
@@ -738,6 +743,8 @@ function buildInsights(courseRows: CourseAnalytics[]) {
       insights.push({
         title: `Review ${course.title}'s lesson funnel`,
         detail: `${course.largestDropOff} learners are lost at its largest progression step.`,
+        rule:
+          "Triggered when at least 5 learners are lost between progression steps.",
         courseId: course.id,
       });
     }
@@ -748,6 +755,7 @@ function buildInsights(courseRows: CourseAnalytics[]) {
       insights.push({
         title: `Quiz difficulty in ${course.title}`,
         detail: `The first-attempt average is ${course.firstAttemptAverage}%.`,
+        rule: "Triggered when the first-attempt average is below 70%.",
         courseId: course.id,
       });
     }
@@ -758,6 +766,8 @@ function buildInsights(courseRows: CourseAnalytics[]) {
       insights.push({
         title: `Course rating needs attention`,
         detail: `${course.title} is rated ${course.ratingAverage}/5 across ${course.ratingCount} ratings.`,
+        rule:
+          "Triggered when at least 5 ratings have an average below 3.5/5.",
         courseId: course.id,
       });
     }
