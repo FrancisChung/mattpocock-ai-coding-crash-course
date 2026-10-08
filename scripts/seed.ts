@@ -167,8 +167,34 @@ async function seed() {
     .returning()
     .all();
 
+  const analyticsStudents = db
+    .insert(schema.users)
+    .values(
+      [
+        "Avery Morgan",
+        "Jordan Lee",
+        "Casey Patel",
+        "Riley Nguyen",
+        "Morgan Silva",
+        "Taylor Kim",
+        "Jamie Brooks",
+        "Cameron Diaz",
+        "Drew Ahmed",
+        "Reese Chen",
+        "Skyler Jones",
+        "Quinn Davis",
+      ].map((name, index) => ({
+        name,
+        email: `analytics.student${index + 1}@example.com`,
+        role: UserRole.Student,
+        createdAt: daysAgo(80 - index),
+      }))
+    )
+    .returning()
+    .all();
+
   console.log(
-    `Created ${1 + 2 + students.length + 1} users (1 admin, 2 instructors, ${students.length + 1} students).`
+    `Created ${1 + 2 + students.length + 1 + analyticsStudents.length} users (1 admin, 2 instructors, ${students.length + 1 + analyticsStudents.length} students).`
   );
 
   // ─── Categories ───
@@ -1403,7 +1429,43 @@ You've completed the Building REST APIs course. You now have the skills to build
     ])
     .run();
 
-  console.log("Created 7 enrollments.");
+  const currentAnalyticsStudents = analyticsStudents.slice(0, 6);
+  const previousAnalyticsStudents = analyticsStudents.slice(6);
+  const currentEnrollmentDays = [3, 7, 11, 16, 21, 26];
+  const previousEnrollmentDays = [34, 39, 44, 49, 54, 59];
+
+  db.insert(schema.enrollments)
+    .values([
+      ...currentAnalyticsStudents.flatMap((student, index) => [
+        {
+          userId: student.id,
+          courseId: course1.id,
+          enrolledAt: daysAgo(currentEnrollmentDays[index]),
+          completedAt: index === 0 ? daysAgo(2) : null,
+        },
+        {
+          userId: student.id,
+          courseId: course2.id,
+          enrolledAt: daysAgo(currentEnrollmentDays[index] + 1),
+          completedAt: index === 1 ? daysAgo(3) : null,
+        },
+      ]),
+      ...previousAnalyticsStudents.flatMap((student, index) => [
+        {
+          userId: student.id,
+          courseId: course1.id,
+          enrolledAt: daysAgo(previousEnrollmentDays[index]),
+        },
+        {
+          userId: student.id,
+          courseId: course2.id,
+          enrolledAt: daysAgo(previousEnrollmentDays[index] + 1),
+        },
+      ]),
+    ])
+    .run();
+
+  console.log("Created 31 enrollments across current and previous cohorts.");
 
   // ─── Course Ratings ───
   // Star ratings from enrolled students only. Not everyone rates.
@@ -1456,7 +1518,28 @@ You've completed the Building REST APIs course. You now have the skills to build
     ])
     .run();
 
-  console.log("Created 6 course ratings.");
+  db.insert(schema.courseRatings)
+    .values(
+      currentAnalyticsStudents.flatMap((student, index) => [
+        {
+          userId: student.id,
+          courseId: course1.id,
+          rating: [2, 2, 3, 3, 3, 4][index],
+          createdAt: daysAgo(currentEnrollmentDays[index] - 1),
+          updatedAt: daysAgo(currentEnrollmentDays[index] - 1),
+        },
+        {
+          userId: student.id,
+          courseId: course2.id,
+          rating: [5, 5, 4, 4, 5, 4][index],
+          createdAt: daysAgo(currentEnrollmentDays[index]),
+          updatedAt: daysAgo(currentEnrollmentDays[index]),
+        },
+      ])
+    )
+    .run();
+
+  console.log("Created 18 course ratings with contrasting distributions.");
 
   // ─── Lesson Comments ───
   // Covers every state the Q&A feature can be in, so the instructor queue and
@@ -1654,6 +1737,29 @@ You've completed the Building REST APIs course. You now have the skills to build
   markComplete(students[4].id, course1LessonIds[0], 12);
   markInProgress(students[4].id, course1LessonIds[1]);
 
+  // Current analytics cohorts deliberately create visible funnels. Everyone
+  // reaches each course's early quiz, then five learners stop progressing at a
+  // later lesson so the Insights panel has a significant loss to explain.
+  currentAnalyticsStudents.forEach((student, studentIndex) => {
+    const course1Reach = studentIndex === 0 ? course1LessonIds.length : 8;
+    for (let lessonIndex = 0; lessonIndex < course1Reach; lessonIndex++) {
+      markComplete(
+        student.id,
+        course1LessonIds[lessonIndex],
+        Math.max(1, currentEnrollmentDays[studentIndex] - lessonIndex)
+      );
+    }
+
+    const course2Reach = studentIndex === 1 ? course2LessonIds.length : 3;
+    for (let lessonIndex = 0; lessonIndex < course2Reach; lessonIndex++) {
+      markComplete(
+        student.id,
+        course2LessonIds[lessonIndex],
+        Math.max(1, currentEnrollmentDays[studentIndex] - lessonIndex + 1)
+      );
+    }
+  });
+
   console.log("Created lesson progress records.");
 
   // ─── Quiz Attempts ───
@@ -1736,6 +1842,58 @@ You've completed the Building REST APIs course. You now have the skills to build
 
   // Sophia — failed quiz 1 (1/3 correct, hasn't retaken yet)
   recordQuizAttempt(students[4].id, quiz1.id, quiz1OptionIds, [1], 10);
+
+  const course1Quiz1Answers = [
+    [0, 1, 2],
+    [0, 1],
+    [0],
+    [1],
+    [2],
+    [],
+  ];
+  const course1Quiz2Answers = [[0, 1], [0], [1], [], [0], [0, 1]];
+  const course2QuizAnswers = [
+    [0, 1, 2],
+    [0, 1, 2],
+    [0, 1],
+    [0, 1],
+    [0, 2],
+    [0],
+  ];
+
+  currentAnalyticsStudents.forEach((student, index) => {
+    recordQuizAttempt(
+      student.id,
+      quiz1.id,
+      quiz1OptionIds,
+      course1Quiz1Answers[index],
+      currentEnrollmentDays[index] - 1
+    );
+    recordQuizAttempt(
+      student.id,
+      quiz2.id,
+      quiz2OptionIds,
+      course1Quiz2Answers[index],
+      Math.max(1, currentEnrollmentDays[index] - 2)
+    );
+    recordQuizAttempt(
+      student.id,
+      quiz3.id,
+      quiz3OptionIds,
+      course2QuizAnswers[index],
+      currentEnrollmentDays[index]
+    );
+  });
+
+  // One learner improves after initially failing, making first-attempt and
+  // eventual-pass metrics visibly different.
+  recordQuizAttempt(
+    currentAnalyticsStudents[2].id,
+    quiz1.id,
+    quiz1OptionIds,
+    [0, 1, 2],
+    1
+  );
 
   console.log("Created quiz attempts and answers.");
 
@@ -1834,7 +1992,44 @@ You've completed the Building REST APIs course. You now have the skills to build
     })
     .run();
 
-  console.log("Created 5 individual purchases.");
+  db.insert(schema.purchases)
+    .values([
+      ...currentAnalyticsStudents.flatMap((student, index) => [
+        {
+          userId: student.id,
+          courseId: course1.id,
+          amountPaid: index % 3 === 0 ? 3499 : 4999,
+          country: index % 3 === 0 ? "BR" : "US",
+          createdAt: daysAgo(currentEnrollmentDays[index]),
+        },
+        {
+          userId: student.id,
+          courseId: course2.id,
+          amountPaid: index % 2 === 0 ? 4499 : 5999,
+          country: index % 2 === 0 ? "IN" : "US",
+          createdAt: daysAgo(currentEnrollmentDays[index] + 1),
+        },
+      ]),
+      ...previousAnalyticsStudents.flatMap((student, index) => [
+        {
+          userId: student.id,
+          courseId: course1.id,
+          amountPaid: index < 2 ? 3499 : 4999,
+          country: index < 2 ? "BR" : "US",
+          createdAt: daysAgo(previousEnrollmentDays[index]),
+        },
+        {
+          userId: student.id,
+          courseId: course2.id,
+          amountPaid: index < 3 ? 4499 : 5999,
+          country: index < 3 ? "IN" : "US",
+          createdAt: daysAgo(previousEnrollmentDays[index] + 1),
+        },
+      ]),
+    ])
+    .run();
+
+  console.log("Created 29 individual purchases across reporting periods.");
 
   // ─── Teams, Team Members, and Coupons ───
   // Bossy McBossface bought 5 team seats for course 2; Olivia and Liam redeemed coupons
@@ -1914,16 +2109,16 @@ You've completed the Building REST APIs course. You now have the skills to build
   );
 
   console.log("\n✓ Seed complete!");
-  console.log("  Users: 9 (1 admin, 2 instructors, 6 students)");
+  console.log("  Users: 21 (1 admin, 2 instructors, 18 students)");
   console.log("  Categories: 5");
   console.log(
     `  Courses: 2 (${course1LessonIds.length} + ${course2LessonIds.length} lessons)`
   );
   console.log("  Quizzes: 3");
-  console.log("  Enrollments: 7");
-  console.log("  Course ratings: 6");
+  console.log("  Enrollments: 31");
+  console.log("  Course ratings: 18");
   console.log("  Lesson comments: 15 (4 questions awaiting an answer)");
-  console.log("  Purchases: 6 (5 individual + 1 team)");
+  console.log("  Purchases: 30 (29 individual + 1 team)");
   console.log("  Teams: 1 (with 5 coupons)");
 }
 
