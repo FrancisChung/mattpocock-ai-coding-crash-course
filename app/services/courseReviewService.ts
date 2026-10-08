@@ -1,6 +1,6 @@
 import { and, eq, sql } from "drizzle-orm";
 import { db } from "~/db";
-import { courseReviews } from "~/db/schema";
+import { courseRatings as courseReviews } from "~/db/schema";
 
 export function getCourseRating(courseId: number, userId?: number | null) {
   const aggregate = db
