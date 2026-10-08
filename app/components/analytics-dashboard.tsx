@@ -194,9 +194,11 @@ export function AnalyticsDashboard({
       </form>
 
       <p className="text-xs text-muted-foreground">
-        {analytics.range.label} · Updated now · Monetary values are gross sales
-        in USD. Historical records are attributed to each course's current
-        owner because ownership history is not stored.
+        {analytics.range.label} · Calculated live from current transactional
+        records · Monetary values are gross sales in USD, not earnings. Ratings
+        show current state, not historical trends. Progression indicates course
+        reach, not learner abandonment. Historical records are attributed to
+        each course's current owner because ownership history is not stored.
       </p>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
@@ -440,7 +442,7 @@ function CourseDetail({ analytics }: { analytics: AnalyticsData }) {
                   {!row.suppressed && row.learnerLoss > 0 ? (
                     <div className="mt-2 flex items-center text-xs text-amber-700">
                       <ArrowDownRight className="mr-1 size-3" />
-                      {row.learnerLoss} learner drop-off
+                      {row.learnerLoss} learner progression drop-off
                     </div>
                   ) : null}
                 </div>

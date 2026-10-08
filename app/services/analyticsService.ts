@@ -750,7 +750,7 @@ function buildInsights(courseRows: CourseAnalytics[]) {
     ) {
       insights.push({
         title: `Review ${course.title}'s lesson funnel`,
-        detail: `${course.largestDropOff} learners are lost at its largest progression step.`,
+        detail: `The largest progression step has a loss of ${course.largestDropOff} learners.`,
         rule: `Triggered when at least ${INSIGHT_THRESHOLDS.progressionLoss} learners are lost between progression steps.`,
         courseId: course.id,
       });
